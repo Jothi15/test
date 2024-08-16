@@ -57,7 +57,7 @@ app.post('/api/submit-form', async (req, res) => {
     const mailOptions = {
       from: 'jothi@cuion.in',
       to: "jothi@cuion.in",
-      Cc : "jothim1521@gmail.com",
+     
       subject: 'Your ITSM Investment Report',
       text: 'Please find your ITSM Investment Report attached.',
       attachments: [
