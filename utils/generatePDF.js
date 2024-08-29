@@ -1,36 +1,45 @@
 // utils/generatePDF.js
 
-const { PDFDocument, rgb } = require('pdf-lib');
-const { generateChart } = require('./generateChart');
+const PDFDocument = require('pdfkit');
+const {
+    generateITSMInvestmentScoresChart,
+    generateOverallITSMModuleChart,
+    generateCurrentlyImplementedITSMModulesChart
+} = require('./generateChart');
 
-const generatePDF = async (customerName, peopleScores, processScores, technologyScores) => {
-  const pdfDoc = await PDFDocument.create();
-  const page = pdfDoc.addPage();
-  const { width, height } = page.getSize();
+async function generatePDF(email, peopleAverages, processAverages, technologyAverages, overallScores, overallITSMModule, currentlyImplementedITSMModules) {
+    const doc = new PDFDocument();
+    const filePath = `/tmp/${email}-report.pdf`;
 
-  page.drawText(`ITSM Investment Report for ${customerName}`, {
-    x: 50,
-    y: height - 50,
-    size: 20,
-    color: rgb(0, 0, 0)
-  });
+    doc.text(`Email: ${email}`, 50, 50);
+    doc.text().text('ITSM Investment Survey', { align: 'center' });
 
-  page.drawText('This report provides an analysis of your ITSM investments based on the modules...', {
-    x: 50,
-    y: height - 100,
-    size: 12,
-    color: rgb(0, 0, 0)
-  });
+    // Page 1: ITSM Investment Scores
+    const itsmInvestmentChart = await generateITSMInvestmentScoresChart(peopleAverages, processAverages, technologyAverages, overallScores);
+    doc.text().text('ITSM Investment Scores by Product Suite', { align: 'center' });
+    doc.image(itsmInvestmentChart, { fit: [500, 300], align: 'center', valign: 'center' });
 
-  const chartBuffer = await generateChart(peopleScores, processScores, technologyScores);
-  const chartImage = await pdfDoc.embedPng(chartBuffer);
-  page.drawImage(chartImage, { x: 50, y: height - 400, width: 500, height: 300 });
+    // Page 2: Overall ITSM Module Scores
+    const overallITSMChart = await generateOverallITSMModuleChart(overallITSMModule);
+    doc.addPage().text('Overall ITSM Module Scores', { align: 'center' });
+    doc.image(overallITSMChart, { fit: [500, 300], align: 'center', valign: 'center' });
 
-  page.drawText(`People Scores: Standard ${peopleScores[0]}, Professional ${peopleScores[1]}, Enterprise ${peopleScores[2]}`, { x: 50, y: height - 450, size: 12 });
-  page.drawText(`Process Scores: Standard ${processScores[0]}, Professional ${processScores[1]}, Enterprise ${processScores[2]}`, { x: 50, y: height - 470, size: 12 });
-  page.drawText(`Technology Scores: Standard ${technologyScores[0]}, Professional ${technologyScores[1]}, Enterprise ${technologyScores[2]}`, { x: 50, y: height - 490, size: 12 });
+    // Page 3: Currently Implemented ITSM Modules Scores
+    const implementedITSMChart = await generateCurrentlyImplementedITSMModulesChart(currentlyImplementedITSMModules);
+    doc.addPage().text('Currently Implemented ITSM Modules Scores', { align: 'center' });
+    doc.image(implementedITSMChart, { fit: [500, 300], align: 'center', valign: 'center' });
 
-  return await pdfDoc.save();
-};
+    // Finalize PDF file
+    doc.end();
+
+    return new Promise((resolve, reject) => {
+        const buffers = [];
+        doc.on('data', buffers.push.bind(buffers));
+        doc.on('end', () => {
+            const pdfData = Buffer.concat(buffers);
+            resolve(pdfData);
+        });
+    });
+}
 
 module.exports = { generatePDF };

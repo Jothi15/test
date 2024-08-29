@@ -7,9 +7,11 @@ const bodyParser = require('body-parser');
 const nodemailer = require('nodemailer');
 const mongoose = require('mongoose');
 const { generatePDF } = require('./utils/generatePDF');
-const { calculateAverages } = require('./utils/calculateAverages');
+ 
 const FormData = require('./models/FormData'); // Import the FormData model
 const cors = require('cors')
+const { calculateAverages, calculateOverall, calculateOverallITSMModule, calculateCurrentlyImplementedITSMModules } = require('./utils/calculateAverages');
+
 
 const app = express();
 app.use(cors());
@@ -50,13 +52,22 @@ app.post('/api/submit-form', async (req, res) => {
     const processAverages = calculateAverages(process);
     const technologyAverages = calculateAverages(technology);
 
-    // Generate PDF
-    const pdfBuffer = await generatePDF('Customer Name', peopleAverages, processAverages, technologyAverages);
+    // Calculate overall scores
+    const overallScores = calculateOverall(peopleAverages, processAverages, technologyAverages);
 
+    // Calculate Overall ITSM Module
+    const overallITSMModule = calculateOverallITSMModule(people, process, technology);
+
+    // Calculate Currently Implemented ITSM Modules
+    const currentlyImplementedITSMModules = calculateCurrentlyImplementedITSMModules(people, process, technology);
+
+    // Generate PDF with the calculated scores
+    const pdfBuffer = await generatePDF(email, peopleAverages, processAverages, technologyAverages, overallScores, overallITSMModule, currentlyImplementedITSMModules);
     // Send email with PDF attachment
     const mailOptions = {
       from: 'jothi@cuion.in',
       to: "jothi@cuion.in",
+       
       subject: 'Your ITSM Investment Report',
       text: 'Please find your ITSM Investment Report attached.',
       attachments: [
